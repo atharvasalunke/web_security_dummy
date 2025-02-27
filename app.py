@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
@@ -48,13 +49,6 @@ def register():
     return render_template("register.html")
 
 
-from sqlalchemy import text  # Import the `text` function
-
-from sqlalchemy import text  # Import text for SQL queries
-
-import sqlite3
-
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -62,7 +56,7 @@ def login():
         password = request.form["password"]
 
         # 🚨 INTENTIONALLY VULNERABLE SQL QUERY (BYPASSING SQLAlchemy)
-        conn = sqlite3.connect("database.db")
+        conn = sqlite3.connect("instance/database.db")
         cursor = conn.cursor()
 
         query = f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
