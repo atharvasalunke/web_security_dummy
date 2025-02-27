@@ -3,8 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+import os
+
+BASE_DIR = os.path.abspath(os.getcwd())  # Get project root path
+DB_PATH = os.path.join(BASE_DIR, "database.db")  # Ensure single DB path
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
@@ -22,9 +26,9 @@ class Post(db.Model):
     author = db.Column(db.String(50), nullable=False)
 
 
-# Create DB Tables
-with app.app_context():
-    db.create_all()
+import os
+print(os.path.abspath("database.db"))
+
 
 
 @app.route("/")
@@ -39,6 +43,12 @@ def register():
         username = request.form["username"]
         password = request.form["password"]
 
+        # Check if the username already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return "❌ Username already exists! Please choose a different one."
+
+        # Insert only if the username is unique
         new_user = User(username=username, password=password)
         db.session.add(new_user)
         db.session.commit()
@@ -46,11 +56,6 @@ def register():
         return redirect(url_for("login"))
 
     return render_template("register.html")
-
-
-from sqlalchemy import text  # Import the `text` function
-
-from sqlalchemy import text  # Import text for SQL queries
 
 import sqlite3
 
@@ -121,4 +126,12 @@ def logout():
 
 
 if __name__ == "__main__":
+    # Create DB Tables
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
+
+@app.after_request
+def remove_csp(response):
+    response.headers["Content-Security-Policy"] = ""
+    return response

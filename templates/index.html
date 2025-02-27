@@ -17,7 +17,7 @@
 
     <h2>Recent Posts</h2>
     {% for post in posts %}
-        <p><b>{{ post.author }}</b>: {{ post.content }}</p>
+        <p><b>{{ post.author  }}</b>: {{ post.content |safe}}</p>
     {% endfor %}
 </body>
 </html>
