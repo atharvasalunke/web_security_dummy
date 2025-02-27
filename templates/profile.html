@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Profile</title>
+</head>
+<body>
+    <h1>Welcome, {{ user.username }}!</h1>
+    <p><b>Your Bio:</b> {{ user.bio }}</p>
+
+    <h2>Update Your Bio (XSS Vulnerable!)</h2>
+    <form method="POST">
+        <textarea name="bio" placeholder="Write something about yourself..."></textarea>
+        <button type="submit">Update Bio</button>
+    </form>
+
+    <h2>Your Posts</h2>
+    <ul>
+        {% for post in posts %}
+            <li><b>{{ post.author }}:</b> {{ post.content }}</li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('home') }}">🏠 Home</a> |
+    <a href="{{ url_for('logout') }}">🚪 Logout</a>
+</body>
+</html>

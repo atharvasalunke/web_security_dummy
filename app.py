@@ -48,19 +48,38 @@ def register():
     return render_template("register.html")
 
 
+from sqlalchemy import text  # Import the `text` function
+
+from sqlalchemy import text  # Import text for SQL queries
+
+import sqlite3
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
 
-        # SQL Injection vulnerability (No parameterized query)
-        user = db.session.execute(
-            f"SELECT * FROM user WHERE username='{username}' AND password='{password}'").fetchone()
+        # 🚨 INTENTIONALLY VULNERABLE SQL QUERY (BYPASSING SQLAlchemy)
+        conn = sqlite3.connect("database.db")
+        cursor = conn.cursor()
+
+        query = f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
+        print(f"🔥 Executing SQL Query: {query}")  # Debugging
+
+        cursor.execute(query)
+        user = cursor.fetchone()
+
+        conn.close()
 
         if user:
-            session["user"] = username
+            print(f"✅ Query Result: {user}")  # Print user data
+            session["user"] = user[1]
             return redirect(url_for("profile"))
+        else:
+            print("❌ No user found (SQL Injection failed!)")
+            return "❌ Invalid login credentials! (Or SQL Injection failed!)"
 
     return render_template("login.html")
 
@@ -71,13 +90,15 @@ def profile():
         return redirect(url_for("login"))
 
     user = User.query.filter_by(username=session["user"]).first()
+    posts = Post.query.filter_by(author=user.username).all()
 
     if request.method == "POST":
         new_bio = request.form["bio"]
-        user.bio = new_bio  # Stored without sanitization (XSS vulnerability)
+        user.bio = new_bio  # ⚠️ XSS vulnerability (no sanitization)
         db.session.commit()
 
-    return render_template("profile.html", user=user)
+    return render_template("profile.html", user=user, posts=posts)
+
 
 
 @app.route("/post", methods=["POST"])
