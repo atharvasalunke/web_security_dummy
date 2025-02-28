@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -26,14 +26,24 @@ class Post(db.Model):
     author = db.Column(db.String(50), nullable=False)
 
 
-import os
-print(os.path.abspath("database.db"))
-
+# Follower Relationship Model
+class Follow(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    follower = db.Column(db.String(50), nullable=False)  # Who follows
+    following = db.Column(db.String(50), nullable=False)  # Who is followed
 
 
 @app.route("/")
 def home():
-    posts = Post.query.all()
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    # Get followed users
+    followed_users = [f.following for f in Follow.query.filter_by(follower=session["user"]).all()]
+
+    # Show posts only from followed users
+    posts = Post.query.filter(Post.author.in_(followed_users)).all()
+
     return render_template("index.html", posts=posts)
 
 
@@ -56,6 +66,7 @@ def register():
         return redirect(url_for("login"))
 
     return render_template("register.html")
+
 
 import sqlite3
 
@@ -102,8 +113,11 @@ def profile():
         user.bio = new_bio  # ⚠️ XSS vulnerability (no sanitization)
         db.session.commit()
 
-    return render_template("profile.html", user=user, posts=posts)
+    # Fetch the list of people the user is following
+    following = [f.following for f in Follow.query.filter_by(follower=session["user"]).all()]
+    followers = [f.follower for f in Follow.query.filter_by(following=session["user"]).all()]
 
+    return render_template("profile.html", user=user, posts=posts, following=following, followers=followers)
 
 
 @app.route("/post", methods=["POST"])
@@ -125,11 +139,45 @@ def logout():
     return redirect(url_for("login"))
 
 
+# Follow a user
+@app.route("/follow/<username>")
+def follow(username):
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    user_following = Follow.query.filter_by(follower=session["user"], following=username).first()
+
+    if not user_following:
+        new_follow = Follow(follower=session["user"], following=username)
+        db.session.add(new_follow)
+        db.session.commit()
+        flash(f"✅ You are now following {username}!", "success")
+
+    return redirect(url_for("profile", username=username))
+
+
+# Unfollow a user
+@app.route("/unfollow/<username>")
+def unfollow(username):
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    follow_entry = Follow.query.filter_by(follower=session["user"], following=username).first()
+
+    if follow_entry:
+        db.session.delete(follow_entry)
+        db.session.commit()
+        flash(f"❌ Unfollowed {username}.", "warning")
+
+    return redirect(url_for("profile", username=username))
+
+
 if __name__ == "__main__":
     # Create DB Tables
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
 
 @app.after_request
 def remove_csp(response):

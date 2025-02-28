@@ -1,23 +1,27 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Fake Social Network</title>
-</head>
-<body>
-    <h1>Welcome to the Dummy Social Network</h1>
+{% extends "base.html" %}
+
+{% block title %}Home - FakeSocial{% endblock %}
+
+{% block content %}
+<div class="post-container">
     {% if session["user"] %}
-        <p>Logged in as {{ session["user"] }} | <a href="{{ url_for('logout') }}">Logout</a></p>
-        <form action="{{ url_for('post') }}" method="post">
-            <textarea name="content" placeholder="Write a post..."></textarea>
-            <button type="submit">Post</button>
-        </form>
-    {% else %}
-        <p><a href="{{ url_for('login') }}">Login</a> | <a href="{{ url_for('register') }}">Register</a></p>
+        <div class="post">
+            <form action="{{ url_for('post') }}" method="post">
+                <textarea class="form-control mb-2" name="content" placeholder="What's on your mind?" required></textarea>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa fa-paper-plane"></i> Post</button>
+            </form>
+        </div>
     {% endif %}
 
-    <h2>Recent Posts</h2>
-    {% for post in posts %}
-        <p><b>{{ post.author  }}</b>: {{ post.content |safe}}</p>
-    {% endfor %}
-</body>
-</html>
+    <h2 class="mt-4">Recent Posts</h2>
+    <!-- User Posts -->
+    <div class="mt-4">
+        <h4>Your Posts</h4>
+        <ul class="list-group">
+            {% for post in posts %}
+                <li class="list-group-item"><b>{{ post.author }}:</b> {{ post.content }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
