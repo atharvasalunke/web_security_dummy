@@ -1,8 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import sqlite3
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
 app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
