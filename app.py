@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate, upgrade
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
@@ -11,6 +12,7 @@ DB_PATH = os.path.join(BASE_DIR, "database.db")  # Ensure single DB path
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 
 # ------------------- DATABASE MODELS -------------------
@@ -45,7 +47,7 @@ def home():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    current_user = session["username"]
+    current_user = session["user"]
 
     # Get users the logged-in user follows
     followed_users = [f.following for f in Follow.query.filter_by(follower=current_user).all()]
@@ -229,4 +231,6 @@ def search_users():
 
 # ------------------- RUN APP -------------------
 if __name__ == "__main__":
+    with app.app_context():
+        upgrade()
     app.run(debug=True)
