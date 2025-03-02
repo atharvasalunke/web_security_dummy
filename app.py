@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
+
 import os
 
 BASE_DIR = os.path.abspath(os.getcwd())  # Get project root path
@@ -12,7 +13,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 
-# Database Model
+# ------------------- DATABASE MODELS -------------------
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -33,20 +34,34 @@ class Follow(db.Model):
     following = db.Column(db.String(50), nullable=False)  # Who is followed
 
 
+# Ensure database tables are created
+with app.app_context():
+    db.create_all()
+
+
+# ------------------- HOME (FEED) -------------------
 @app.route("/")
 def home():
     if "user" not in session:
         return redirect(url_for("login"))
 
-    # Get followed users
-    followed_users = [f.following for f in Follow.query.filter_by(follower=session["user"]).all()]
+    current_user = session["username"]
 
-    # Show posts only from followed users
-    posts = Post.query.filter(Post.author.in_(followed_users)).all()
+    # Get users the logged-in user follows
+    followed_users = [f.following for f in Follow.query.filter_by(follower=current_user).all()]
+    followed_users.append(current_user)  # Include own posts
 
-    return render_template("index.html", posts=posts)
+    # Get posts only from followed users
+    posts = Post.query.filter(Post.author.in_(followed_users)).order_by(Post.id.desc()).all()
+
+    # Get list of users the current user is following
+    following = [f.following for f in Follow.query.filter_by(follower=current_user).all()]
+
+    return render_template("index.html", posts=posts, following=following)
 
 
+
+# ------------------- USER REGISTRATION -------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -56,18 +71,20 @@ def register():
         # Check if the username already exists
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
-            return "❌ Username already exists! Please choose a different one."
+            flash("❌ Username already exists! Please choose a different one.", "danger")
+            return redirect(url_for("register"))
 
-        # Insert only if the username is unique
         new_user = User(username=username, password=password)
         db.session.add(new_user)
         db.session.commit()
 
+        flash("✅ Registration successful! You can now log in.", "success")
         return redirect(url_for("login"))
 
     return render_template("register.html")
 
 
+# ------------------- USER LOGIN -------------------
 import sqlite3
 
 
@@ -82,7 +99,7 @@ def login():
         cursor = conn.cursor()
 
         query = f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
-        print(f"🔥 Executing SQL Query: {query}")  # Debugging
+        print(f"🔥 Executing SQL Query: {query}")
 
         cursor.execute(query)
         user = cursor.fetchone()
@@ -90,36 +107,52 @@ def login():
         conn.close()
 
         if user:
-            print(f"✅ Query Result: {user}")  # Print user data
-            session["user"] = user[1]
-            return redirect(url_for("profile"))
+            print(f"✅ Query Result: {user}")
+            session["user"] = user[1]  # Store correct session key
+            flash("✅ Login successful!", "success")
+            return redirect(url_for("home"))  # Redirect to home instead of rendering index.html directly
         else:
-            print("❌ No user found (SQL Injection failed!)")
-            return "❌ Invalid login credentials! (Or SQL Injection failed!)"
+            flash("❌ Invalid login credentials! (Or SQL Injection failed!)", "danger")
+            return redirect(url_for("login"))
 
     return render_template("login.html")
 
 
-@app.route("/profile", methods=["GET", "POST"])
-def profile():
-    if "user" not in session:
+
+# ------------------- VIEW USER PROFILE -------------------
+@app.route("/profile/<username>")
+def profile(username):
+    if "username" not in session:  # Ensure correct session key
         return redirect(url_for("login"))
 
-    user = User.query.filter_by(username=session["user"]).first()
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        flash("❌ User not found!", "danger")
+        return redirect(url_for("home"))
+
     posts = Post.query.filter_by(author=user.username).all()
 
-    if request.method == "POST":
-        new_bio = request.form["bio"]
-        user.bio = new_bio  # ⚠️ XSS vulnerability (no sanitization)
-        db.session.commit()
+    # Fetch followers and following lists
+    following = [f.following for f in Follow.query.filter_by(follower=user.username).all()]
+    followers = [f.follower for f in Follow.query.filter_by(following=user.username).all()]
 
-    # Fetch the list of people the user is following
-    following = [f.following for f in Follow.query.filter_by(follower=session["user"]).all()]
-    followers = [f.follower for f in Follow.query.filter_by(following=session["user"]).all()]
+    # Check if the logged-in user follows this profile
+    logged_in_user = session.get("username")  # Retrieve username safely
+    is_following = False
 
-    return render_template("profile.html", user=user, posts=posts, following=following, followers=followers)
+    if logged_in_user:  # Avoid KeyError if session is empty
+        is_following = Follow.query.filter_by(follower=logged_in_user, following=username).first() is not None
 
+    return render_template(
+        "profile.html",
+        user=user,
+        posts=posts,
+        following=following,
+        followers=followers,
+        is_following=is_following,
+    )
 
+# ------------------- CREATE POSTS -------------------
 @app.route("/post", methods=["POST"])
 def post():
     if "user" not in session:
@@ -130,33 +163,26 @@ def post():
     db.session.add(new_post)
     db.session.commit()
 
+    flash("✅ Post created!", "success")
     return redirect(url_for("home"))
 
 
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    return redirect(url_for("login"))
-
-
-# Follow a user
+# ------------------- FOLLOW / UNFOLLOW -------------------
 @app.route("/follow/<username>")
 def follow(username):
     if "user" not in session:
         return redirect(url_for("login"))
 
-    user_following = Follow.query.filter_by(follower=session["user"], following=username).first()
-
-    if not user_following:
-        new_follow = Follow(follower=session["user"], following=username)
-        db.session.add(new_follow)
-        db.session.commit()
-        flash(f"✅ You are now following {username}!", "success")
+    if username != session["user"]:
+        existing_follow = Follow.query.filter_by(follower=session["user"], following=username).first()
+        if not existing_follow:
+            new_follow = Follow(follower=session["user"], following=username)
+            db.session.add(new_follow)
+            db.session.commit()
+            flash(f"✅ You are now following {username}!", "success")
 
     return redirect(url_for("profile", username=username))
 
-
-# Unfollow a user
 @app.route("/unfollow/<username>")
 def unfollow(username):
     if "user" not in session:
@@ -172,14 +198,35 @@ def unfollow(username):
     return redirect(url_for("profile", username=username))
 
 
-if __name__ == "__main__":
-    # Create DB Tables
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+# ------------------- LOGOUT -------------------
+@app.route("/logout")
+def logout():
+    session.pop("user", None)  # Remove correct session key
+    flash("✅ Logged out successfully!", "success")
+    return redirect(url_for("login"))
 
 
+# ------------------- REMOVE CSP HEADERS (FOR XSS TESTING) -------------------
 @app.after_request
 def remove_csp(response):
     response.headers["Content-Security-Policy"] = ""
     return response
+
+@app.route("/search_users")
+def search_users():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    query = request.args.get("query")
+    if not query:
+        flash("❌ Please enter a search term!", "warning")
+        return redirect(url_for("home"))
+
+    # Perform a simple search in the User table
+    users = User.query.filter(User.username.like(f"%{query}%")).all()
+
+    return render_template("search_results.html", users=users)
+
+# ------------------- RUN APP -------------------
+if __name__ == "__main__":
+    app.run(debug=True)

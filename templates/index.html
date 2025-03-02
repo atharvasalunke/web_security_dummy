@@ -3,25 +3,122 @@
 {% block title %}Home - FakeSocial{% endblock %}
 
 {% block content %}
-<div class="post-container">
-    {% if session["user"] %}
-        <div class="post">
-            <form action="{{ url_for('post') }}" method="post">
-                <textarea class="form-control mb-2" name="content" placeholder="What's on your mind?" required></textarea>
-                <button type="submit" class="btn btn-primary w-100"><i class="fa fa-paper-plane"></i> Post</button>
-            </form>
-        </div>
-    {% endif %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Left Sidebar: Search Users & Trending -->
+        <div class="col-md-3">
+            <div class="card p-3 mb-3 shadow-lg rounded">
+                <h5 class="text-primary"><i class="fa fa-search"></i> Find Friends</h5>
+                <form method="GET" action="{{ url_for('search_users') }}">
+                    <input type="text" name="query" class="form-control mb-2" placeholder="Search users..." required>
+                    <button type="submit" class="btn btn-primary w-100">🔍 Search</button>
+                </form>
+            </div>
 
-    <h2 class="mt-4">Recent Posts</h2>
-    <!-- User Posts -->
-    <div class="mt-4">
-        <h4>Your Posts</h4>
-        <ul class="list-group">
+            <div class="card p-3 shadow-lg rounded">
+                <h5 class="text-danger"><i class="fa fa-fire"></i> Trending Topics</h5>
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <img src="https://source.unsplash.com/50x50/?tech" class="rounded-circle me-2" width="30">
+                        🚀 #CyberSecurity
+                    </li>
+                    <li class="list-group-item">
+                        <img src="https://source.unsplash.com/50x50/?ai" class="rounded-circle me-2" width="30">
+                        🤖 #AI
+                    </li>
+                    <li class="list-group-item">
+                        <img src="https://source.unsplash.com/50x50/?programming" class="rounded-circle me-2" width="30">
+                        💻 #OpenSource
+                    </li>
+                    <li class="list-group-item">
+                        <img src="https://source.unsplash.com/50x50/?world" class="rounded-circle me-2" width="30">
+                        🌍 #TechWorld
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Middle Column: User Posts & Stories -->
+        <div class="col-md-6">
+            {% if session["user"] %}
+                <div class="post mb-3">
+                    <div class="card shadow-lg rounded">
+                        <div class="card-body">
+                            <form action="{{ url_for('post') }}" method="post">
+                                <textarea class="form-control mb-2" name="content" placeholder="What's on your mind?" required></textarea>
+                                <button type="submit" class="btn btn-primary w-100"><i class="fa fa-paper-plane"></i> Post</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- User Stories -->
+            <div class="mb-3">
+                <h5 class="text-primary"><i class="fa fa-camera"></i> Stories</h5>
+                <div class="d-flex">
+                    <div class="story-container text-center me-2">
+                        <img src="https://source.unsplash.com/80x80/?selfie" class="rounded-circle border" width="60">
+                        <p class="small">Your Story</p>
+                    </div>
+                    <div class="story-container text-center me-2">
+                        <img src="https://source.unsplash.com/80x80/?people" class="rounded-circle border" width="60">
+                        <p class="small">Alice</p>
+                    </div>
+                    <div class="story-container text-center me-2">
+                        <img src="https://source.unsplash.com/80x80/?portrait" class="rounded-circle border" width="60">
+                        <p class="small">Bob</p>
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="mb-3 text-primary">📢 Your Feed</h4>
             {% for post in posts %}
-                <li class="list-group-item"><b>{{ post.author }}:</b> {{ post.content }}</li>
+                <div class="card mb-3 shadow-lg rounded">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <img src="https://ui-avatars.com/api/?name={{ post.author }}&background=random" class="rounded-circle me-2" width="40">
+                            <h6>
+                                <a href="{{ url_for('profile', username=post.author) }}" class="text-decoration-none">
+                                    <b>{{ post.author }}</b>
+                                </a>
+                            </h6>
+                        </div>
+                        <p class="mt-2">{{ post.content |safe }}</p>
+                        {% if post.image %}
+                            <img src="{{ post.image }}" class="img-fluid rounded" alt="User Post">
+                        {% else %}
+                            <img src="https://source.unsplash.com/600x300/?nature,city" class="img-fluid rounded" alt="Placeholder Image">
+                        {% endif %}
+                        <div class="d-flex justify-content-between mt-2">
+                            <button class="btn btn-outline-primary btn-sm"><i class="fa fa-thumbs-up"></i> Like</button>
+                            <button class="btn btn-outline-secondary btn-sm"><i class="fa fa-comment"></i> Comment</button>
+                        </div>
+                    </div>
+                </div>
             {% endfor %}
-        </ul>
+        </div>
+
+        <!-- Right Sidebar: Suggested Friends -->
+        <div class="col-md-3">
+            <div class="card p-3 shadow-lg rounded">
+                <h5 class="text-success"><i class="fa fa-users"></i> Suggested Friends</h5>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex align-items-center">
+                        <img src="https://source.unsplash.com/50x50/?woman" class="rounded-circle me-2" width="30">
+                        Alice <button class="btn btn-outline-primary btn-sm ms-auto">Follow</button>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <img src="https://source.unsplash.com/50x50/?man" class="rounded-circle me-2" width="30">
+                        Bob <button class="btn btn-outline-primary btn-sm ms-auto">Follow</button>
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <img src="https://source.unsplash.com/50x50/?boy" class="rounded-circle me-2" width="30">
+                        Charlie <button class="btn btn-outline-primary btn-sm ms-auto">Follow</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

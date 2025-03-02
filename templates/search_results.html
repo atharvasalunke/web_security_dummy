@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Search Results</h3>
+
+    {% if users %}
+        <ul class="list-group">
+            {% for user in users %}
+                <li class="list-group-item">
+                    <a href="{{ url_for('profile', username=user.username) }}">{{ user.username }}</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted">No users found.</p>
+    {% endif %}
+
+    <a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">🏠 Back to Home</a>
+</div>
+{% endblock %}
