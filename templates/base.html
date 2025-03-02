@@ -57,7 +57,7 @@
             <a class="navbar-brand" href="/">🔥 FakeSocial</a>
             <div class="ms-auto d-flex align-items-center">
                 {% if session["user"] %}
-                    <a href="{{ url_for('profile', username=session['username']) }}" class="btn btn-light me-2">
+                    <a href="{{ url_for('profile', username=session['user']) }}" class="btn btn-light me-2">
                         <i class="fa fa-user"></i> Profile
                     </a>
                     <a href="{{ url_for('logout') }}" class="btn btn-danger"><i class="fa fa-sign-out-alt"></i> Logout</a>

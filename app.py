@@ -1,11 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate, upgrade
+from flask_cors import CORS
+import os
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
+CORS(app, supports_credentials=True)
 
-import os
+app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
 
 BASE_DIR = os.path.abspath(os.getcwd())  # Get project root path
 DB_PATH = os.path.join(BASE_DIR, "database.db")  # Ensure single DB path
@@ -13,7 +15,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-
 
 # ------------------- DATABASE MODELS -------------------
 class User(db.Model):
@@ -42,12 +43,17 @@ with app.app_context():
 
 
 # ------------------- HOME (FEED) -------------------
+from flask import get_flashed_messages
+
 @app.route("/")
 def home():
+    # Check if the user is logged in
     if "user" not in session:
+        # Clear old flash messages to prevent excessive alerts
+        get_flashed_messages()
         return redirect(url_for("login"))
 
-    current_user = session["user"]
+    current_user = session.get("user")  # Retrieve session correctly
 
     # Get users the logged-in user follows
     followed_users = [f.following for f in Follow.query.filter_by(follower=current_user).all()]
@@ -56,10 +62,12 @@ def home():
     # Get posts only from followed users
     posts = Post.query.filter(Post.author.in_(followed_users)).order_by(Post.id.desc()).all()
 
-    # Get list of users the current user is following
+    # Get suggested users (excluding the current user & already followed users)
     following = [f.following for f in Follow.query.filter_by(follower=current_user).all()]
+    suggested_users = User.query.filter(User.username != current_user, User.username.notin_(following)).limit(5).all()
 
-    return render_template("index.html", posts=posts, following=following)
+    return render_template("index.html", posts=posts, suggested_users=suggested_users, following=following)
+
 
 
 
@@ -110,21 +118,27 @@ def login():
 
         if user:
             print(f"✅ Query Result: {user}")
-            session["user"] = user[1]  # Store correct session key
-            flash("✅ Login successful!", "success")
-            return redirect(url_for("home"))  # Redirect to home instead of rendering index.html directly
+
+            # Store username in session
+            session["user"] = user[1]  # Store username correctly
+            session.modified = True  # Ensure session is saved
+
+            print("🚀 Session after login:", session)
+
+            return redirect(url_for("home"))
         else:
-            flash("❌ Invalid login credentials! (Or SQL Injection failed!)", "danger")
+            flash("❌ Invalid login credentials!", "danger")
             return redirect(url_for("login"))
 
     return render_template("login.html")
 
 
 
+
 # ------------------- VIEW USER PROFILE -------------------
 @app.route("/profile/<username>")
 def profile(username):
-    if "username" not in session:  # Ensure correct session key
+    if "user" not in session:  # Ensure correct session key
         return redirect(url_for("login"))
 
     user = User.query.filter_by(username=username).first()
