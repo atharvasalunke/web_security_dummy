@@ -3,47 +3,55 @@
 {% block title %}Home - FakeSocial{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-4">
     <div class="row">
-        <!-- Left Sidebar: Search Users & Trending -->
-        <div class="col-md-3">
-            <div class="card p-3 mb-3 shadow-lg rounded">
-                <h5 class="text-primary"><i class="fa fa-search"></i> Find Friends</h5>
-                <form method="GET" action="{{ url_for('search_users') }}">
-                    <input type="text" name="query" class="form-control mb-2" placeholder="Search users..." required>
-                    <button type="submit" class="btn btn-primary w-100">🔍 Search</button>
-                </form>
-            </div>
-
-            <div class="card p-3 shadow-lg rounded">
-                <h5 class="text-danger"><i class="fa fa-fire"></i> Trending Topics</h5>
-                <ul class="list-group">
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?tech" class="rounded-circle me-2" width="30">
-                        🚀 #CyberSecurity
-                    </li>
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?ai" class="rounded-circle me-2" width="30">
-                        🤖 #AI
-                    </li>
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?programming" class="rounded-circle me-2" width="30">
-                        💻 #OpenSource
-                    </li>
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?world" class="rounded-circle me-2" width="30">
-                        🌍 #TechWorld
-                    </li>
-                </ul>
+        <!-- Sidebar Navigation -->
+        <div class="col-md-2">
+            <div class="list-group shadow-lg rounded">
+                <a href="#" class="list-group-item list-group-item-action active">
+                    <i class="fa fa-home"></i> Home
+                </a>
+                <a href="{{ url_for('profile', username=session['user']) }}" class="list-group-item list-group-item-action">
+                    <i class="fa fa-user"></i> Profile
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fa fa-bell"></i> Notifications <span class="badge bg-danger float-end">3</span>
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fa fa-cog"></i> Settings
+                </a>
             </div>
         </div>
 
-        <!-- Middle Column: User Posts & Stories -->
-        <div class="col-md-6">
+        <!-- Middle Column: Post Input, User Stories & Feed -->
+        <div class="col-md-7">
             {% if session["user"] %}
-                <div class="post mb-3">
-                    <div class="card shadow-lg rounded">
-                        <div class="card-body">
+                <!-- Post Section -->
+                <div class="card shadow-lg rounded mb-4">
+                    <div class="card-body">
+                        <h5 class="mb-3"><i class="fa fa-edit"></i> Create a Post</h5>
+                        <form action="{{ url_for('post') }}" method="post">
+                            <textarea class="form-control mb-2" name="content" placeholder="What's on your mind?" required></textarea>
+                            <button type="submit" class="btn btn-primary w-100"><i class="fa fa-paper-plane"></i> Post</button>
+                        </form>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Floating Action Button (FAB) for Mobile Posting -->
+            <button class="btn btn-primary fab" data-bs-toggle="modal" data-bs-target="#postModal">
+                <i class="fa fa-plus"></i>
+            </button>
+
+            <!-- Post Modal (for mobile users) -->
+            <div class="modal fade" id="postModal" tabindex="-1" aria-labelledby="postModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="postModalLabel">Create a Post</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
                             <form action="{{ url_for('post') }}" method="post">
                                 <textarea class="form-control mb-2" name="content" placeholder="What's on your mind?" required></textarea>
                                 <button type="submit" class="btn btn-primary w-100"><i class="fa fa-paper-plane"></i> Post</button>
@@ -51,22 +59,22 @@
                         </div>
                     </div>
                 </div>
-            {% endif %}
+            </div>
 
             <!-- User Stories -->
             <div class="mb-3">
                 <h5 class="text-primary"><i class="fa fa-camera"></i> Stories</h5>
-                <div class="d-flex">
+                <div class="d-flex overflow-auto">
                     <div class="story-container text-center me-2">
-                        <img src="https://source.unsplash.com/80x80/?selfie" class="rounded-circle border" width="60">
+                        <img src="https://source.unsplash.com/80x80/?selfie" class="rounded-circle border story" width="60">
                         <p class="small">Your Story</p>
                     </div>
                     <div class="story-container text-center me-2">
-                        <img src="https://source.unsplash.com/80x80/?people" class="rounded-circle border" width="60">
+                        <img src="https://source.unsplash.com/80x80/?people" class="rounded-circle border story" width="60">
                         <p class="small">Alice</p>
                     </div>
                     <div class="story-container text-center me-2">
-                        <img src="https://source.unsplash.com/80x80/?portrait" class="rounded-circle border" width="60">
+                        <img src="https://source.unsplash.com/80x80/?portrait" class="rounded-circle border story" width="60">
                         <p class="small">Bob</p>
                     </div>
                 </div>
@@ -74,7 +82,7 @@
 
             <h4 class="mb-3 text-primary">📢 Your Feed</h4>
             {% for post in posts %}
-                <div class="card mb-3 shadow-lg rounded">
+                <div class="card mb-3 shadow-lg rounded post-card">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <img src="https://ui-avatars.com/api/?name={{ post.author }}&background=random" class="rounded-circle me-2" width="40">
@@ -88,10 +96,9 @@
                         {% if post.image %}
                             <img src="{{ post.image }}" class="img-fluid rounded" alt="User Post">
                         {% else %}
-                            <img src="https://source.unsplash.com/600x300/?nature,city" class="img-fluid rounded" alt="Placeholder Image">
                         {% endif %}
                         <div class="d-flex justify-content-between mt-2">
-                            <button class="btn btn-outline-primary btn-sm"><i class="fa fa-thumbs-up"></i> Like</button>
+                            <button class="btn btn-outline-primary btn-sm like-btn"><i class="fa fa-thumbs-up"></i> Like</button>
                             <button class="btn btn-outline-secondary btn-sm"><i class="fa fa-comment"></i> Comment</button>
                         </div>
                     </div>
@@ -121,4 +128,44 @@
         </div>
     </div>
 </div>
+
+<!-- Custom CSS & Animations -->
+<style>
+    .story {
+        transition: transform 0.3s;
+    }
+    .story:hover {
+        transform: scale(1.1);
+    }
+    .post-card {
+        transition: all 0.3s ease-in-out;
+    }
+    .post-card:hover {
+        box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    .like-btn {
+        transition: 0.3s;
+    }
+    .like-btn:hover {
+        background-color: #007bff;
+        color: white;
+    }
+    .fab {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-size: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: 0.3s;
+        z-index: 1000;
+    }
+    .fab:hover {
+        transform: scale(1.1);
+    }
+</style>
 {% endblock %}
