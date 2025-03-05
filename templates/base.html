@@ -47,6 +47,94 @@
             background-color: #181818;
             color: white;
         }
+
+        /* Follow/Unfollow Button */
+        .btn-follow {
+            background-color: #0d6efd; /* Primary blue color */
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            width: 100%; /* Full width */
+            text-align: center;
+            margin-top: 10px; /* Add some spacing */
+        }
+
+        .btn-follow:hover {
+            background-color: #0b5ed7; /* Darker blue on hover */
+            color: white;
+        }
+
+        .btn-unfollow {
+            background-color: #dc3545; /* Danger red color */
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            width: 100%; /* Full width */
+            text-align: center;
+            margin-top: 10px; /* Add some spacing */
+        }
+
+        .btn-unfollow:hover {
+            background-color: #bb2d3b; /* Darker red on hover */
+            color: white;
+        }
+      /* Navbar Profile Button */
+    .navbar .btn-profile {
+        background-color: #5fa8ff;
+        color: white;
+        border: none;
+        padding: 6px 12px; /* Increased horizontal padding */
+        border-radius: 6px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        display: flex; text-align: center;
+        align-items: center;
+        font-size: 14px;
+        gap: 5px; /* Space between icon and text */
+        margin-right: 12px; /* Added spacing between Profile & Logout */
+    }
+
+    /* Adjust hover effect */
+    .navbar .btn-profile:hover {
+        background-color: #3f8cf5;
+        color: white;
+    }
+
+    .navbar .btn-danger {
+        background-color: #dc3545; /* Danger red color */
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .navbar .btn-danger:hover {
+        background-color: #bb2d3b; /* Darker red on hover */
+        color: white;
+    }
+
+    .navbar .btn-success {
+        background-color: #198754; /* Success green color */
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    .navbar .btn-success:hover {
+        background-color: #157347; /* Darker green on hover */
+        color: white;
+    }
     </style>
 </head>
 <body>
@@ -54,11 +142,11 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg p-3">
         <div class="container">
-            <a class="navbar-brand" href="/">🔥 FakeSocial</a>
+            <a class="navbar-brand" href="/">FakeSocial</a>
             <div class="ms-auto d-flex align-items-center">
                 {% if session["user"] %}
-                    <a href="{{ url_for('profile', username=session['user']) }}" class="btn btn-light me-2">
-                        <i class="fa fa-user"></i> Profile
+                    <a href="{{ url_for('profile', username=session['user']) }}" class="btn btn-profile ">
+                        <i class="fa fa-user"></i>  Profile
                     </a>
                     <a href="{{ url_for('logout') }}" class="btn btn-danger"><i class="fa fa-sign-out-alt"></i> Logout</a>
                 {% else %}

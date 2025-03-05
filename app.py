@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
 import os
+from flask import jsonify
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -33,8 +34,8 @@ class Post(db.Model):
 # Follower Relationship Model
 class Follow(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    follower = db.Column(db.String(50), nullable=False)  # Who follows
-    following = db.Column(db.String(50), nullable=False)  # Who is followed
+    follower = db.Column(db.String(50), nullable=False)
+    following = db.Column(db.String(50), nullable=False)
 
 
 # Ensure database tables are created
@@ -47,13 +48,13 @@ from flask import get_flashed_messages
 
 @app.route("/")
 def home():
-    # Check if the user is logged in
+
     if "user" not in session:
-        # Clear old flash messages to prevent excessive alerts
+
         get_flashed_messages()
         return redirect(url_for("login"))
 
-    current_user = session.get("user")  # Retrieve session correctly
+    current_user = session.get("user")
 
     # Get users the logged-in user follows
     followed_users = [f.following for f in Follow.query.filter_by(follower=current_user).all()]
@@ -81,14 +82,14 @@ def register():
         # Check if the username already exists
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
-            flash("❌ Username already exists! Please choose a different one.", "danger")
+            flash("Username already exists! Please choose a different one.", "danger")
             return redirect(url_for("register"))
 
         new_user = User(username=username, password=password)
         db.session.add(new_user)
         db.session.commit()
 
-        flash("✅ Registration successful! You can now log in.", "success")
+        flash("Registration successful! You can now log in.", "success")
         return redirect(url_for("login"))
 
     return render_template("register.html")
@@ -104,12 +105,12 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        # 🚨 INTENTIONALLY VULNERABLE SQL QUERY (BYPASSING SQLAlchemy)
+        # INTENTIONALLY VULNERABLE SQL QUERY (BYPASSING SQLAlchemy)
         conn = sqlite3.connect("database.db")
         cursor = conn.cursor()
-
+        #Vulnerablity SQL injection
         query = f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
-        print(f"🔥 Executing SQL Query: {query}")
+        print(f"Executing SQL Query: {query}")
 
         cursor.execute(query)
         user = cursor.fetchone()
@@ -117,17 +118,17 @@ def login():
         conn.close()
 
         if user:
-            print(f"✅ Query Result: {user}")
+            print(f"Query Result: {user}")
 
             # Store username in session
-            session["user"] = user[1]  # Store username correctly
-            session.modified = True  # Ensure session is saved
+            session["user"] = user[1]
+            session.modified = True
 
-            print("🚀 Session after login:", session)
+            print("Session after login:", session)
 
             return redirect(url_for("home"))
         else:
-            flash("❌ Invalid login credentials!", "danger")
+            flash("Invalid login credentials!", "danger")
             return redirect(url_for("login"))
 
     return render_template("login.html")
@@ -136,14 +137,14 @@ def login():
 
 
 # ------------------- VIEW USER PROFILE -------------------
-@app.route("/profile/<username>")
+@app.route("/profile/<username>", methods=["GET", "POST"])
 def profile(username):
     if "user" not in session:  # Ensure correct session key
         return redirect(url_for("login"))
 
     user = User.query.filter_by(username=username).first()
     if not user:
-        flash("❌ User not found!", "danger")
+        flash("User not found!", "danger")
         return redirect(url_for("home"))
 
     posts = Post.query.filter_by(author=user.username).all()
@@ -153,11 +154,17 @@ def profile(username):
     followers = [f.follower for f in Follow.query.filter_by(following=user.username).all()]
 
     # Check if the logged-in user follows this profile
-    logged_in_user = session.get("username")  # Retrieve username safely
+    logged_in_user = session.get("user")  # Retrieve username safely
     is_following = False
-
+    #print("logged in user :", logged_in_user)
     if logged_in_user:  # Avoid KeyError if session is empty
         is_following = Follow.query.filter_by(follower=logged_in_user, following=username).first() is not None
+    #print("following :", is_following)
+
+    if request.method == "POST":
+        new_bio = request.form["bio"]
+        user.bio = new_bio  # XSS vulnerability (no sanitization)
+        db.session.commit()
 
     return render_template(
         "profile.html",
@@ -179,7 +186,7 @@ def post():
     db.session.add(new_post)
     db.session.commit()
 
-    flash("✅ Post created!", "success")
+    flash("Post created!", "success")
     return redirect(url_for("home"))
 
 
@@ -195,7 +202,7 @@ def follow(username):
             new_follow = Follow(follower=session["user"], following=username)
             db.session.add(new_follow)
             db.session.commit()
-            flash(f"✅ You are now following {username}!", "success")
+            flash(f"You are now following {username}!", "success")
 
     return redirect(url_for("profile", username=username))
 
@@ -242,6 +249,17 @@ def search_users():
     users = User.query.filter(User.username.like(f"%{query}%")).all()
 
     return render_template("search_results.html", users=users)
+
+@app.route("/latest_post/<username>", methods=["GET"])
+def latest_post(username):
+    latest = Post.query.filter_by(author=username).order_by(Post.id.desc()).first()
+    #print({"post": latest.content})
+    if latest is None:
+        return jsonify({"message": "No posts yet."}), 200
+
+    return jsonify({"post": latest.content})
+
+
 
 # ------------------- RUN APP -------------------
 if __name__ == "__main__":

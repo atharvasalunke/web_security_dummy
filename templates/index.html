@@ -3,7 +3,79 @@
 {% block title %}Home - FakeSocial{% endblock %}
 
 {% block content %}
+<style>
+/* Trending Topics */
+.trending-topics .list-group-item {
+    border: none;
+    background: white;
+    font-weight: bold;
+    padding: 10px 15px;
+}
+
+/* Suggested Friends Section */
+.suggested-friends {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.suggested-friends h5 {
+    color: #198754;
+    font-weight: bold;
+}
+
+/* List item: Align everything in a single row */
+.suggested-friends .list-group-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: none;
+    padding: 10px 15px;
+}
+
+/* Profile Image */
+.suggested-friends .profile-info {
+    display: flex;
+    align-items: center;
+}
+
+.suggested-friends .profile-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+}
+
+/* Follow Button - Compact and Consistent */
+.suggested-friends .btn-follow {
+    background-color: white;
+    color: #0d6efd;
+    border: 2px solid #0d6efd;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    width: auto;
+}
+
+.suggested-friends .btn-follow:hover {
+    background-color: #0d6efd;
+    color: white;
+}
+</style>
+
+
 <div class="container mt-4">
+    <!-- User Greeting -->
+    {% if session["user"] %}
+        <div class="alert alert-primary text-center fw-bold rounded shadow-sm" role="alert">
+             Hello, <b>{{ session["user"] }}</b>! Welcome back to FakeSocial!
+        </div>
+    {% endif %}
+
     <div class="row">
         <!-- Left Sidebar: Search Users & Trending -->
         <div class="col-md-3">
@@ -17,23 +89,11 @@
 
             <div class="card p-3 shadow-lg rounded">
                 <h5 class="text-danger"><i class="fa fa-fire"></i> Trending Topics</h5>
-                <ul class="list-group">
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?tech" class="rounded-circle me-2" width="30">
-                        🚀 #CyberSecurity
-                    </li>
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?ai" class="rounded-circle me-2" width="30">
-                        🤖 #AI
-                    </li>
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?programming" class="rounded-circle me-2" width="30">
-                        💻 #OpenSource
-                    </li>
-                    <li class="list-group-item">
-                        <img src="https://source.unsplash.com/50x50/?world" class="rounded-circle me-2" width="30">
-                        🌍 #TechWorld
-                    </li>
+                <ul class="list-group trending-topics">
+                    <li class="list-group-item">#CyberSecurity</li>
+                    <li class="list-group-item">#AI</li>
+                    <li class="list-group-item">#OpenSource</li>
+                    <li class="list-group-item">#TechWorld</li>
                 </ul>
             </div>
         </div>
@@ -58,26 +118,26 @@
                 <h5 class="text-primary"><i class="fa fa-camera"></i> Stories</h5>
                 <div class="d-flex">
                     <div class="story-container text-center me-2">
-                        <img src="https://source.unsplash.com/80x80/?selfie" class="rounded-circle border" width="60">
-                        <p class="small">Your Story</p>
+                        <img src="https://i.pravatar.cc/150?img=60" class="rounded-circle border" width="60">
+                        <p class="small">Jake</p>
                     </div>
                     <div class="story-container text-center me-2">
-                        <img src="https://source.unsplash.com/80x80/?people" class="rounded-circle border" width="60">
-                        <p class="small">Alice</p>
+                        <img src="https://i.pravatar.cc/150?img=48" class="rounded-circle border" width="60">
+                        <p class="small">Alison</p>
                     </div>
                     <div class="story-container text-center me-2">
-                        <img src="https://source.unsplash.com/80x80/?portrait" class="rounded-circle border" width="60">
-                        <p class="small">Bob</p>
+                        <img src="https://i.pravatar.cc/150?img=55" class="rounded-circle border" width="60">
+                        <p class="small">Peter</p>
                     </div>
                 </div>
             </div>
 
-            <h4 class="mb-3 text-primary">📢 Your Feed</h4>
+            <h4 class="mb-3 text-primary"> Your Feed</h4>
             {% for post in posts %}
                 <div class="card mb-3 shadow-lg rounded">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
-                            <img src="https://ui-avatars.com/api/?name={{ post.author }}&background=random" class="rounded-circle me-2" width="40">
+                            <img src="https://ui-avatars.com/api/?name={{ post.author | urlencode }}&background=random" class="rounded-circle me-2" width="40">
                             <h6>
                                 <a href="{{ url_for('profile', username=post.author) }}" class="text-decoration-none">
                                     <b>{{ post.author }}</b>
@@ -87,8 +147,6 @@
                         <p class="mt-2">{{ post.content |safe }}</p>
                         {% if post.image %}
                             <img src="{{ post.image }}" class="img-fluid rounded" alt="User Post">
-                        {% else %}
-
                         {% endif %}
                         <div class="d-flex justify-content-between mt-2">
                             <button class="btn btn-outline-primary btn-sm"><i class="fa fa-thumbs-up"></i> Like</button>
@@ -100,25 +158,38 @@
         </div>
 
         <!-- Right Sidebar: Suggested Friends -->
+
+        <!-- Right Sidebar: Suggested Friends -->
         <div class="col-md-3">
-            <div class="card p-3 shadow-lg rounded">
+            <div class="card p-3 shadow-lg rounded suggested-friends">
                 <h5 class="text-success"><i class="fa fa-users"></i> Suggested Friends</h5>
                 <ul class="list-group">
-                    <li class="list-group-item d-flex align-items-center">
-                        <img src="https://source.unsplash.com/50x50/?woman" class="rounded-circle me-2" width="30">
-                        Alice <button class="btn btn-outline-primary btn-sm ms-auto">Follow</button>
+                    <li class="list-group-item">
+                        <div class="profile-info">
+                            <img src="https://i.pravatar.cc/150?img=45" class="rounded-circle">
+                            <b>Alice</b>
+                        </div>
+                        <button class="btn btn-follow">Follow</button>
                     </li>
-                    <li class="list-group-item d-flex align-items-center">
-                        <img src="https://source.unsplash.com/50x50/?man" class="rounded-circle me-2" width="30">
-                        Bob <button class="btn btn-outline-primary btn-sm ms-auto">Follow</button>
+                    <li class="list-group-item">
+                        <div class="profile-info">
+                            <img src="https://i.pravatar.cc/150?img=52" class="rounded-circle">
+                            <b>Bob</b>
+                        </div>
+                        <button class="btn btn-follow">Follow</button>
                     </li>
-                    <li class="list-group-item d-flex align-items-center">
-                        <img src="https://source.unsplash.com/50x50/?boy" class="rounded-circle me-2" width="30">
-                        Charlie <button class="btn btn-outline-primary btn-sm ms-auto">Follow</button>
+                    <li class="list-group-item">
+                        <div class="profile-info">
+                            <img src="https://i.pravatar.cc/150?img=56" class="rounded-circle">
+                            <b>Charlie</b>
+                        </div>
+                        <button class="btn btn-follow">Follow</button>
                     </li>
                 </ul>
             </div>
         </div>
+
+
     </div>
 </div>
 {% endblock %}
