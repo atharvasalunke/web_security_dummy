@@ -105,6 +105,7 @@
                     <div class="card shadow-lg rounded">
                         <div class="card-body">
                             <form action="{{ url_for('post') }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ session['csrf_token'] }}">
                                 <textarea class="form-control mb-2" name="content" placeholder="What's on your mind?" required></textarea>
                                 <button type="submit" class="btn btn-primary w-100"><i class="fa fa-paper-plane"></i> Post</button>
                             </form>
@@ -144,7 +145,7 @@
                                 </a>
                             </h6>
                         </div>
-                        <p class="mt-2">{{ post.content |safe }}</p>
+                        <p class="mt-2">{{ post.content | safe }}</p>
                         {% if post.image %}
                             <img src="{{ post.image }}" class="img-fluid rounded" alt="User Post">
                         {% endif %}

@@ -1,12 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate, upgrade
-from flask_cors import CORS
-import os
 from flask import jsonify
+import os
+import secrets
+from werkzeug.security import generate_password_hash, check_password_hash
+import bleach
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
 
 app.secret_key = "supersecretkey"  # Used for session management (CSRF vulnerability)
 
@@ -14,15 +15,39 @@ BASE_DIR = os.path.abspath(os.getcwd())  # Get project root path
 DB_PATH = os.path.join(BASE_DIR, "database.db")  # Ensure single DB path
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # Prevent JS from accessing cookies
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+@app.before_request
+def set_csrf_token():
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+        session.modified = True  # Ensure session updates
+
+    print("CSRF Token Set:", session.get("csrf_token"))  # Debugging
+
+@app.after_request
+def set_csrf_cookie(response):
+    response.set_cookie("csrf_token", session.get("csrf_token"), httponly=False, samesite="Strict")
+    return response
 
 # ------------------- DATABASE MODELS -------------------
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password = db.Column(db.String(50), nullable=False)  # Stored in plain text (Security flaw)
+    password = db.Column(db.String(128), nullable=False)  # Stored in plain text (Security flaw)
     bio = db.Column(db.Text, default="Hello! I'm new here.")  # XSS vulnerability
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
+    
+    def set_bio(self, bio):
+        allowed_tags = ['b', 'i', 'u', 'strong', 'em', 'p', 'br', 'a']
+        self.bio = bleach.clean(bio, tags=allowed_tags)
 
 
 class Post(db.Model):
@@ -30,6 +55,9 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)  # No sanitization (XSS vulnerability)
     author = db.Column(db.String(50), nullable=False)
 
+    def set_content(self, content):
+        allowed_tags = ['b', 'i', 'u', 'strong', 'em', 'p', 'br', 'a']
+        self.content = bleach.clean(content, tags=allowed_tags)
 
 # Follower Relationship Model
 class Follow(db.Model):
@@ -50,7 +78,6 @@ from flask import get_flashed_messages
 def home():
 
     if "user" not in session:
-
         get_flashed_messages()
         return redirect(url_for("login"))
 
@@ -85,7 +112,8 @@ def register():
             flash("Username already exists! Please choose a different one.", "danger")
             return redirect(url_for("register"))
 
-        new_user = User(username=username, password=password)
+        new_user = User(username=username)
+        new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
 
@@ -96,36 +124,25 @@ def register():
 
 
 # ------------------- USER LOGIN -------------------
-import sqlite3
-
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    print("Request Method:", request.method)
+    print("Request Form Data:", request.form)  
+    print("Session CSRF Token:", session.get("csrf_token")) 
     if request.method == "POST":
+        print("Form CSRF Token:", request.form.get("csrf_token"))
+        print("Session CSRF Token:", session.get("csrf_token"))
+
+        if request.form.get("csrf_token") != session.get("csrf_token"):
+            abort(403)  # Forbidden
+
         username = request.form["username"]
         password = request.form["password"]
 
-        # INTENTIONALLY VULNERABLE SQL QUERY (BYPASSING SQLAlchemy)
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-        #Vulnerablity SQL injection
-        query = f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
-        print(f"Executing SQL Query: {query}")
-
-        cursor.execute(query)
-        user = cursor.fetchone()
-
-        conn.close()
-
-        if user:
-            print(f"Query Result: {user}")
-
-            # Store username in session
-            session["user"] = user[1]
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            session["user"] = user.username
             session.modified = True
-
-            print("Session after login:", session)
-
             return redirect(url_for("home"))
         else:
             flash("Invalid login credentials!", "danger")
@@ -142,7 +159,7 @@ def profile(username):
     if "user" not in session:  # Ensure correct session key
         return redirect(url_for("login"))
 
-    user = User.query.filter_by(username=username).first()
+    user: User = User.query.filter_by(username=username).first()
     if not user:
         flash("User not found!", "danger")
         return redirect(url_for("home"))
@@ -162,8 +179,10 @@ def profile(username):
     #print("following :", is_following)
 
     if request.method == "POST":
+        if request.form.get("csrf_token") != session.get("csrf_token"):
+            abort(403)
         new_bio = request.form["bio"]
-        user.bio = new_bio  # XSS vulnerability (no sanitization)
+        user.set_bio(new_bio)
         db.session.commit()
 
     return render_template(
@@ -178,11 +197,15 @@ def profile(username):
 # ------------------- CREATE POSTS -------------------
 @app.route("/post", methods=["POST"])
 def post():
+    if request.form.get("csrf_token") != session.get("csrf_token"):
+        abort(403)
+
     if "user" not in session:
         return redirect(url_for("login"))
 
     content = request.form["content"]
-    new_post = Post(content=content, author=session["user"])
+    new_post = Post(author=session["user"])
+    new_post.set_content(content)
     db.session.add(new_post)
     db.session.commit()
 
@@ -229,12 +252,6 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ------------------- REMOVE CSP HEADERS (FOR XSS TESTING) -------------------
-@app.after_request
-def remove_csp(response):
-    response.headers["Content-Security-Policy"] = ""
-    return response
-
 @app.route("/search_users")
 def search_users():
     if "user" not in session:
@@ -259,7 +276,11 @@ def latest_post(username):
 
     return jsonify({"post": latest.content})
 
-
+@app.route("/debug_session")
+def debug_session():
+    session["test"] = "Hello"
+    print("Session Content:", dict(session))  # Print session data
+    return jsonify(session=dict(session))
 
 # ------------------- RUN APP -------------------
 if __name__ == "__main__":

